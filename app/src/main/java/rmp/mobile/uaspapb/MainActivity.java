@@ -22,6 +22,8 @@ import java.util.List;
 import java.util.Locale;
 
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.util.Log;
 import android.view.View;
 import android.view.WindowManager;
@@ -39,7 +41,7 @@ public class MainActivity extends AppCompatActivity {
     private ArrayList<ToDoModel> toDoModelArrayList;
     private ToDoAdapter toDoAdapter;
     Thread t;
-
+    Handler h;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -68,19 +70,34 @@ public class MainActivity extends AppCompatActivity {
             public void onResponse(JSONArray response) {
                 toDoModelArrayList.clear();
 
-                try {
-                    for (int i=0; i<response.length(); i++){
-                        JSONObject jsonObject = response.getJSONObject(i);
+                h = new Handler(Looper.getMainLooper());
+                t = new Thread(new Runnable() {
+                    @Override
+                    public void run() {
+                        try {
+                            for (int i=0; i<response.length(); i++){
+                                JSONObject jsonObject = response.getJSONObject(i);
 
-                        String activity = jsonObject.getString("what");
-                        String time = jsonObject.getString("time");
+                                String activity = jsonObject.getString("what");
+                                String time = jsonObject.getString("time");
 
-                        toDoModelArrayList.add(new ToDoModel(activity,time));
+                                toDoModelArrayList.add(new ToDoModel(activity,time));
+                            }
+                            h.post(new Runnable() {
+                                @Override
+                                public void run() {
+                                    toDoAdapter.notifyDataSetChanged();
+                                }
+                            });
+                            Thread.sleep(100);
+                        }catch (JSONException e) {
+                            e.printStackTrace();
+                        } catch (InterruptedException e) {
+                            throw new RuntimeException(e);
+                        }
                     }
-                    toDoAdapter.notifyDataSetChanged();
-                } catch (JSONException e) {
-                    e.printStackTrace();
-                }
+                });
+                t.start();
             }
         }, new Response.ErrorListener() {
             @Override
